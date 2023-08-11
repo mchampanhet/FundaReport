@@ -17,11 +17,30 @@ namespace FundaReport.Services
             _httpClient.BaseAddress = new Uri(_fundaApiSettings.BaseUrl);
         }
 
-        public async Task<FundaResponseBaseModel> GetQueryResults(string query, int pageNumber, int pageSize)
+        public async Task<FundaResponseModel> GetQueryResults(string query, int pageNumber, int pageSize)
         {
+            var response = new FundaResponseModel();
             var uri = $"?{query}&page={pageNumber}&pageSize={pageSize}";
-            var response = await _httpClient.GetAsync(uri);
-            return JsonConvert.DeserializeObject<FundaResponseBaseModel>(await response.Content.ReadAsStringAsync());
+            try
+            {
+                var fundaResponse = await _httpClient.GetAsync(uri);
+                
+                if (fundaResponse.IsSuccessStatusCode)
+                {
+                    response.Content = JsonConvert.DeserializeObject<FundaResponseBaseModel>(await fundaResponse.Content.ReadAsStringAsync());
+                }
+                else
+                {
+                    response.IsFailed = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                response.IsFailed = true;
+                response.Error = ex.Message;
+            }
+
+            return response;
         }
     }
 }
