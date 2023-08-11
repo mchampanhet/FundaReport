@@ -2,6 +2,6 @@
 {
     public class MakelaarReportModel
     {
-        public MakelaarTableModel[] MakelaarTables { get; set; }
+        public List<MakelaarTableModel> MakelaarTables { get; set; }
     }
 }

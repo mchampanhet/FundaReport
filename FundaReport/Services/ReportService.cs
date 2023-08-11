@@ -16,8 +16,28 @@ namespace FundaReport.Services
 
         public async Task<MakelaarReportModel> GenerateMakelaarReportAsync()
         {
-            await _fundaHttpService.GetQueryResults(_makelaarReportSettings.Queries[0], 1, 100);
-            return null;
+            var response = await _fundaHttpService.GetQueryResults(_makelaarReportSettings.Queries[0], 1, 100);
+            var report = new MakelaarReportModel
+            {
+                MakelaarTables = new List<MakelaarTableModel>
+                {
+                    new MakelaarTableModel
+                    {
+                        Rows = new List<MakelaarRowModel>()
+                    }
+                }
+            };
+
+            foreach (var item in response.Objects)
+            {
+                report.MakelaarTables[0].Rows.Add(new MakelaarRowModel
+                {
+                    MakelaarNaam = item.MakelaarNaam,
+                    MakelaarId = item.MakelaarId,
+                    Total = 1
+                });
+            }
+            return report;
         }
     }
 }

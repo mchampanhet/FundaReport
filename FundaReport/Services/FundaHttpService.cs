@@ -19,7 +19,7 @@ namespace FundaReport.Services
 
         public async Task<FundaResponseBaseModel> GetQueryResults(string query, int pageNumber, int pageSize)
         {
-            var uri = $"?{query}&page={pageNumber}&pagesize={pageSize}";
+            var uri = $"?{query}&page={pageNumber}&pageSize={pageSize}";
             var response = await _httpClient.GetAsync(uri);
             return JsonConvert.DeserializeObject<FundaResponseBaseModel>(await response.Content.ReadAsStringAsync());
         }
