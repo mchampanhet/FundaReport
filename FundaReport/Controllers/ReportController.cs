@@ -23,7 +23,7 @@ namespace FundaReport.Controllers
 
             try
             {
-                result = await _reportService.GenerateMakelaarReportAsync();
+                result = await _reportService.GetStandardMakelaarReportAsync();
             }
             catch (Exception ex)
             {
@@ -32,5 +32,23 @@ namespace FundaReport.Controllers
 
             return Ok(result);
         }
+
+        [HttpPost(Name = nameof(GetMakelaarReportForQuery))]
+        public async Task<IActionResult> GetMakelaarReportForQuery([FromBody] string query)
+        {
+            MakelaarReportModel result;
+
+            try
+            {
+                result = await _reportService.GetMakelaarReportForQueryAsync([query]);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.ServiceUnavailable, ex.Message);
+            }
+
+            return Ok(result);
+        }
+
     }
 }

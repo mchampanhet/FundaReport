@@ -21,16 +21,21 @@ namespace FundaReport.Services
             _makelaarReportSettings = appSettings.Value.MakelaarReportSettings;
         }
 
-        public async Task<MakelaarReportModel> GenerateMakelaarReportAsync()
+        public async Task<MakelaarReportModel> GetStandardMakelaarReportAsync()
         {
+            return await GetMakelaarReportForQueryAsync(_makelaarReportSettings.Queries);
+        }
+
+        public async Task<MakelaarReportModel> GetMakelaarReportForQueryAsync(string[] queries)
+        { 
             _report = new MakelaarReportModel
             {
                 MakelaarTables = new List<MakelaarTableModel>()
             };
 
-            for (var tableIndex = 0; tableIndex < _makelaarReportSettings.Queries.Length; tableIndex++)
+            for (var tableIndex = 0; tableIndex < queries.Length; tableIndex++)
             {
-                var query = _makelaarReportSettings.Queries[tableIndex];
+                var query = queries[tableIndex];
                 _report.MakelaarTables.Add(new MakelaarTableModel
                 {
                     Query = query,
