@@ -1,6 +1,7 @@
 using FundaReport.Models;
 using FundaReport.Services;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 using System.Net;
 
 namespace FundaReport.Controllers
@@ -16,8 +17,11 @@ namespace FundaReport.Controllers
             _reportService = reportService;
         }
 
-        [HttpGet(Name = nameof(GenerateMakelaarReport))]
-        public async Task<IActionResult> GenerateMakelaarReport()
+        [HttpGet, Route("GetStandardMakelaarReport")]
+        [SwaggerOperation(nameof(GetStandardMakelaarReport))]
+        [SwaggerResponse((int)HttpStatusCode.OK, Type = typeof(MakelaarReportModel))]
+        [SwaggerResponse((int)HttpStatusCode.ServiceUnavailable)]
+        public async Task<IActionResult> GetStandardMakelaarReport()
         {
             MakelaarReportModel result;
 
@@ -33,21 +37,28 @@ namespace FundaReport.Controllers
             return Ok(result);
         }
 
-        [HttpPost(Name = nameof(GetMakelaarReportForQuery))]
+        [HttpPost, Route("GetMakelaarReportForQuery")]
+        [SwaggerOperation(nameof(GetMakelaarReportForQuery))]
+        [SwaggerResponse((int)HttpStatusCode.OK, Type = typeof(MakelaarReportModel))]
+        [SwaggerResponse((int)HttpStatusCode.ServiceUnavailable)]
         public async Task<IActionResult> GetMakelaarReportForQuery([FromBody] string query)
         {
-            MakelaarReportModel result;
+            MakelaarReportModel response = new MakelaarReportModel
+            {
+                MakelaarTables = new List<MakelaarTableModel>()
+            };
 
             try
             {
-                result = await _reportService.GetMakelaarReportForQueryAsync([query]);
+                var result = await _reportService.GetMakelaarReportForQueryAsync(query);
+                response.MakelaarTables.Add(result);
             }
             catch (Exception ex)
             {
                 return StatusCode((int)HttpStatusCode.ServiceUnavailable, ex.Message);
             }
 
-            return Ok(result);
+            return Ok(response);
         }
 
     }

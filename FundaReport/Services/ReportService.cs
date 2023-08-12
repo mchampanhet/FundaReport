@@ -23,116 +23,116 @@ namespace FundaReport.Services
 
         public async Task<MakelaarReportModel> GetStandardMakelaarReportAsync()
         {
-            return await GetMakelaarReportForQueryAsync(_makelaarReportSettings.Queries);
-        }
-
-        public async Task<MakelaarReportModel> GetMakelaarReportForQueryAsync(string[] queries)
-        { 
-            _report = new MakelaarReportModel
+            var report = new MakelaarReportModel
             {
                 MakelaarTables = new List<MakelaarTableModel>()
             };
 
-            for (var tableIndex = 0; tableIndex < queries.Length; tableIndex++)
+            foreach (var query in _makelaarReportSettings.Queries)
             {
-                var query = queries[tableIndex];
-                _report.MakelaarTables.Add(new MakelaarTableModel
-                {
-                    Query = query,
-                    Rows = new List<MakelaarRowModel>()
-                });
-
-                var table = _report.MakelaarTables[tableIndex];
-                var page = 1;
-                var total = 0;
-                _apiRequestCounter = 0;
-                _stopwatch = new Stopwatch();
-                _stopwatch.Start();
-
-                while (page == 1 || page * _pageSize < total)
-                { 
-                    var fundaResponse = await _fundaHttpService.GetQueryResultsAsync(query, page, _pageSize);
-                    _apiRequestCounter++;
-                    if (fundaResponse.IsFailed)
-                    {
-                        // if Funda API call fails, give it a little time and try again
-                        Thread.Sleep(3000);
-                        _report.MakelaarTables[tableIndex].TotalTimeWaitingOnRateLimit += 3;
-                        checkForRateLimiting(tableIndex);
-                        fundaResponse = await _fundaHttpService.GetQueryResultsAsync(query, page, _pageSize);
-                        _apiRequestCounter++;
-
-                        if (fundaResponse.IsFailed)
-                        {
-                            // if Funda API still fails at this point, abandon report and throw exception
-                            var message = fundaResponse.Error ?? "Funda API not responding";
-                            throw new Exception(message);
-                        }
-                    }
-
-                    var currentPage = fundaResponse.Content;
-                    total = currentPage.TotaalAantalObjecten;
-
-                    foreach (var listing in currentPage.Objects)
-                    {
-                        // find out if we've already saved this makelaar before
-                        var makelaar = table.Rows.FirstOrDefault(x => x.MakelaarId == listing.MakelaarId);
-                        if (makelaar != null)
-                        {
-                            // increment the existing makelaar's property count
-                            makelaar.Total++;
-                        }
-                        else
-                        {
-                            // add the new makelaar
-                            table.Rows.Add(new MakelaarRowModel
-                            {
-                                MakelaarNaam = listing.MakelaarNaam,
-                                MakelaarId = listing.MakelaarId,
-                                Total = 1
-                            });
-                        }
-                    }
-
-                    page++;
-
-                    checkForRateLimiting(tableIndex);
-                }
-                _stopwatch.Stop();
-                UpdateQueryTableCompilationStats(tableIndex);
-                table.Rows = table.Rows.OrderByDescending(x => x.Total).Take(10).ToList();
+                report.MakelaarTables.Add(await GetMakelaarReportForQueryAsync(query));
             }
-            return _report;
+
+            return report;
         }
 
-        private void checkForRateLimiting(int tableIndex)
+        public async Task<MakelaarTableModel> GetMakelaarReportForQueryAsync(string query)
+        {
+            var table = new MakelaarTableModel
+            {
+                Query = query,
+                Rows = new List<MakelaarRowModel>()
+            };
+
+            var page = 1;
+            var total = 0;
+            _apiRequestCounter = 0;
+            _stopwatch = new Stopwatch();
+            _stopwatch.Start();
+
+            while (page == 1 || page * _pageSize < total)
+            { 
+                var fundaResponse = await _fundaHttpService.GetQueryResultsAsync(query, page, _pageSize);
+                _apiRequestCounter++;
+                if (fundaResponse.IsFailed)
+                {
+                    // if Funda API call fails, give it a little time and try again
+                    Thread.Sleep(3000);
+                    table.TotalTimeWaitingOnRateLimit += 3;
+                    checkForRateLimiting(table);
+                    fundaResponse = await _fundaHttpService.GetQueryResultsAsync(query, page, _pageSize);
+                    _apiRequestCounter++;
+
+                    if (fundaResponse.IsFailed)
+                    {
+                        // if Funda API still fails at this point, abandon report and throw exception
+                        var message = fundaResponse.Error ?? "Funda API not responding";
+                        throw new Exception(message);
+                    }
+                }
+
+                var currentPage = fundaResponse.Content;
+                total = currentPage.TotaalAantalObjecten;
+
+                foreach (var listing in currentPage.Objects)
+                {
+                    // find out if we've already saved this makelaar before
+                    var makelaar = table.Rows.FirstOrDefault(x => x.MakelaarId == listing.MakelaarId);
+                    if (makelaar != null)
+                    {
+                        // increment the existing makelaar's property count
+                        makelaar.Total++;
+                    }
+                    else
+                    {
+                        // add the new makelaar
+                        table.Rows.Add(new MakelaarRowModel
+                        {
+                            MakelaarNaam = listing.MakelaarNaam,
+                            MakelaarId = listing.MakelaarId,
+                            Total = 1
+                        });
+                    }
+                }
+
+                page++;
+
+                checkForRateLimiting(table);
+            }
+            _stopwatch.Stop();
+            UpdateQueryTableCompilationStats(table);
+            table.Rows = table.Rows.OrderByDescending(x => x.Total).Take(10).ToList();
+            return table;
+        }
+
+        private void checkForRateLimiting(MakelaarTableModel table)
         {
             // check if we need to wait before making more API calls
             if (_apiRequestCounter >= 100 && _stopwatch.ElapsedMilliseconds < 60000)
             {
                 var sleepTime = 61000 - (int)_stopwatch.ElapsedMilliseconds;
-                _report.MakelaarTables[tableIndex].TotalTimeWaitingOnRateLimit += sleepTime / 1000;
+                table.TotalTimeWaitingOnRateLimit += sleepTime / 1000;
                 Thread.Sleep(sleepTime);
-                ResetRateLimitObservers(tableIndex);
+                ResetRateLimitObservers(table);
             }
             else if (_stopwatch.ElapsedMilliseconds >= 60000)
             {
-                ResetRateLimitObservers(tableIndex);
+                ResetRateLimitObservers(table);
             }
         }
 
-        private void ResetRateLimitObservers(int currentTableIndex)
+        private void ResetRateLimitObservers(MakelaarTableModel table)
         {
-            UpdateQueryTableCompilationStats(currentTableIndex);
+            UpdateQueryTableCompilationStats(table);
             _apiRequestCounter = 0;
             _stopwatch.Reset();
         }
         
-        private void UpdateQueryTableCompilationStats(int currentTableIndex)
+        private void UpdateQueryTableCompilationStats(MakelaarTableModel table)
         {
             var elapsedSeconds = _stopwatch.ElapsedMilliseconds / 1000;
-            _report.MakelaarTables[currentTableIndex].TotalTimePreparingTable += (int)elapsedSeconds;
-            _report.MakelaarTables[currentTableIndex].NumberOfApiRequests += _apiRequestCounter;
+            table.TotalTimePreparingTable += (int)elapsedSeconds;
+            table.NumberOfApiRequests += _apiRequestCounter;
         }
     }
 }
