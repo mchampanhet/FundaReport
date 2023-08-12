@@ -1,0 +1,25 @@
+<div *ngIf="report?.MakelaarTables; else noReport">
+  <div *ngFor="let table of report.MakelaarTables">
+    <h3>{{table.Query}}</h3>
+    <table>
+      <header>
+        <tr>
+          <th>Makelaar Name</th>
+          <th>Makelaar Id</th>
+          <th>Number of Properties</th>
+        </tr>
+      </header>
+      <body>
+        <tr *ngFor="let row of table.Rows">
+          <td>{{row.MakelaarNaam}}</td>
+          <td>{{row.MakelaarId}}</td>
+          <td>{{row.Total}}</td>
+        </tr>
+      </body>
+    </table>
+  </div>
+</div>
+<ng-template #noReport>
+  <h1 *ngIf="!failed">Fetching report...</h1>
+  <h1 *ngIf="failed">Fetching report failed</h1>
+</ng-template>
