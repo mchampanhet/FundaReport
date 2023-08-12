@@ -17,7 +17,7 @@ namespace FundaReport.Services
             _httpClient.BaseAddress = new Uri(_fundaApiSettings.BaseUrl);
         }
 
-        public async Task<FundaResponseModel> GetQueryResults(string query, int pageNumber, int pageSize)
+        public async Task<FundaResponseModel> GetQueryResultsAsync(string query, int pageNumber, int pageSize)
         {
             var response = new FundaResponseModel();
             var uri = $"?{query}&page={pageNumber}&pageSize={pageSize}";

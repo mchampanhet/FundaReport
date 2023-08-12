@@ -2,7 +2,6 @@
 using FundaReport.Settings;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
-using System.Reflection.Metadata.Ecma335;
 
 namespace FundaReport.Services
 {
@@ -44,9 +43,10 @@ namespace FundaReport.Services
                 _apiRequestCounter = 0;
                 _stopwatch = new Stopwatch();
                 _stopwatch.Start();
+
                 while (page == 1 || page * _pageSize < total)
                 { 
-                    var fundaResponse = await _fundaHttpService.GetQueryResults(query, page, _pageSize);
+                    var fundaResponse = await _fundaHttpService.GetQueryResultsAsync(query, page, _pageSize);
                     _apiRequestCounter++;
                     if (fundaResponse.IsFailed)
                     {
@@ -54,8 +54,9 @@ namespace FundaReport.Services
                         Thread.Sleep(3000);
                         _report.MakelaarTables[tableIndex].TotalTimeWaitingOnRateLimit += 3;
                         checkForRateLimiting(tableIndex);
-                        fundaResponse = await _fundaHttpService.GetQueryResults(query, page, _pageSize);
+                        fundaResponse = await _fundaHttpService.GetQueryResultsAsync(query, page, _pageSize);
                         _apiRequestCounter++;
+
                         if (fundaResponse.IsFailed)
                         {
                             // if Funda API still fails at this point, abandon report and throw exception
@@ -63,6 +64,7 @@ namespace FundaReport.Services
                             throw new Exception(message);
                         }
                     }
+
                     var currentPage = fundaResponse.Content;
                     total = currentPage.TotaalAantalObjecten;
 
