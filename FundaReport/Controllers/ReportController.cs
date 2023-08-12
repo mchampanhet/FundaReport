@@ -1,6 +1,7 @@
 using FundaReport.Models;
 using FundaReport.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 
 namespace FundaReport.Controllers
 {
@@ -16,10 +17,20 @@ namespace FundaReport.Controllers
         }
 
         [HttpGet(Name = nameof(GenerateMakelaarReport))]
-        public Task<MakelaarReportModel> GenerateMakelaarReport()
+        public async Task<IActionResult> GenerateMakelaarReport()
+        {
+            MakelaarReportModel result;
+
+            try
             {
-            var result = _reportService.GenerateMakelaarReportAsync();
-            return result;
+                result = await _reportService.GenerateMakelaarReportAsync();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.ServiceUnavailable, ex.Message);
+            }
+
+            return Ok(result);
         }
     }
 }

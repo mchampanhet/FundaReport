@@ -2,6 +2,7 @@
 using FundaReport.Settings;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
+using System.Reflection.Metadata.Ecma335;
 
 namespace FundaReport.Services
 {
@@ -9,9 +10,11 @@ namespace FundaReport.Services
     {
         private readonly FundaHttpService _fundaHttpService;
         private readonly MakelaarReportSettings _makelaarReportSettings;
+        // 25 appears to be the max pagesize the API supports
         private readonly int _pageSize = 25;
         private Stopwatch _stopwatch;
         private int _apiRequestCounter;
+        private MakelaarReportModel _report;
 
         public ReportService(IOptions<AppSettings> appSettings, FundaHttpService fundaHttpService) 
         {
@@ -21,42 +24,60 @@ namespace FundaReport.Services
 
         public async Task<MakelaarReportModel> GenerateMakelaarReportAsync()
         {
-            var report = new MakelaarReportModel
+            _report = new MakelaarReportModel
             {
                 MakelaarTables = new List<MakelaarTableModel>()
             };
 
-            for (var queryIndex = 0; queryIndex < _makelaarReportSettings.Queries.Length; queryIndex++)
+            for (var tableIndex = 0; tableIndex < _makelaarReportSettings.Queries.Length; tableIndex++)
             {
-                var query = _makelaarReportSettings.Queries[queryIndex];
-                report.MakelaarTables.Add(new MakelaarTableModel
+                var query = _makelaarReportSettings.Queries[tableIndex];
+                _report.MakelaarTables.Add(new MakelaarTableModel
                 {
                     Query = query,
                     Rows = new List<MakelaarRowModel>()
                 });
 
-                var table = report.MakelaarTables[queryIndex];
+                var table = _report.MakelaarTables[tableIndex];
                 var page = 1;
-                var total = 26;
+                var total = 0;
                 _apiRequestCounter = 0;
                 _stopwatch = new Stopwatch();
                 _stopwatch.Start();
-                while (page * _pageSize < total)
+                while (page == 1 || page * _pageSize < total)
                 { 
                     var fundaResponse = await _fundaHttpService.GetQueryResults(query, page, _pageSize);
                     _apiRequestCounter++;
+                    if (fundaResponse.IsFailed)
+                    {
+                        // if Funda API call fails, give it a little time and try again
+                        Thread.Sleep(3000);
+                        _report.MakelaarTables[tableIndex].TotalTimeWaitingOnRateLimit += 3;
+                        checkForRateLimiting(tableIndex);
+                        fundaResponse = await _fundaHttpService.GetQueryResults(query, page, _pageSize);
+                        _apiRequestCounter++;
+                        if (fundaResponse.IsFailed)
+                        {
+                            // if Funda API still fails at this point, abandon report and throw exception
+                            var message = fundaResponse.Error ?? "Funda API not responding";
+                            throw new Exception(message);
+                        }
+                    }
                     var currentPage = fundaResponse.Content;
                     total = currentPage.TotaalAantalObjecten;
 
                     foreach (var listing in currentPage.Objects)
                     {
+                        // find out if we've already saved this makelaar before
                         var makelaar = table.Rows.FirstOrDefault(x => x.MakelaarId == listing.MakelaarId);
                         if (makelaar != null)
                         {
+                            // increment the existing makelaar's property count
                             makelaar.Total++;
                         }
                         else
                         {
+                            // add the new makelaar
                             table.Rows.Add(new MakelaarRowModel
                             {
                                 MakelaarNaam = listing.MakelaarNaam,
@@ -68,27 +89,43 @@ namespace FundaReport.Services
 
                     page++;
 
-                    if (_apiRequestCounter >= 100 && _stopwatch.ElapsedMilliseconds < 60000)
-                    {
-                        Thread.Sleep(60000 - (int)_stopwatch.ElapsedMilliseconds);
-                        ResetRateLimitObservers();
-                    }
-                    else if (_stopwatch.ElapsedMilliseconds >= 60000)
-                    {
-                        ResetRateLimitObservers();
-                    }
+                    checkForRateLimiting(tableIndex);
                 }
-
                 _stopwatch.Stop();
+                UpdateQueryTableCompilationStats(tableIndex);
                 table.Rows = table.Rows.OrderByDescending(x => x.Total).Take(10).ToList();
             }
-            return report;
+            return _report;
         }
 
-        private void ResetRateLimitObservers()
+        private void checkForRateLimiting(int tableIndex)
         {
+            // check if we need to wait before making more API calls
+            if (_apiRequestCounter >= 100 && _stopwatch.ElapsedMilliseconds < 60000)
+            {
+                var sleepTime = 61000 - (int)_stopwatch.ElapsedMilliseconds;
+                _report.MakelaarTables[tableIndex].TotalTimeWaitingOnRateLimit += sleepTime / 1000;
+                Thread.Sleep(sleepTime);
+                ResetRateLimitObservers(tableIndex);
+            }
+            else if (_stopwatch.ElapsedMilliseconds >= 60000)
+            {
+                ResetRateLimitObservers(tableIndex);
+            }
+        }
+
+        private void ResetRateLimitObservers(int currentTableIndex)
+        {
+            UpdateQueryTableCompilationStats(currentTableIndex);
             _apiRequestCounter = 0;
             _stopwatch.Reset();
+        }
+        
+        private void UpdateQueryTableCompilationStats(int currentTableIndex)
+        {
+            var elapsedSeconds = _stopwatch.ElapsedMilliseconds / 1000;
+            _report.MakelaarTables[currentTableIndex].TotalTimePreparingTable += (int)elapsedSeconds;
+            _report.MakelaarTables[currentTableIndex].NumberOfApiRequests += _apiRequestCounter;
         }
     }
 }
