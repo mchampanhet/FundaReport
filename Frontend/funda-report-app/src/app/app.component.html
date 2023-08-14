@@ -1,21 +1,21 @@
-<div *ngIf="report?.MakelaarTables; else noReport">
-  <div *ngFor="let table of report.MakelaarTables">
-    <h3>{{table.Query}}</h3>
+<div *ngIf="report?.makelaarTables; else noReport">
+  <div *ngFor="let table of report.makelaarTables">
+    <h3>{{table.query}}</h3>
     <table>
-      <header>
+      <thead>
         <tr>
           <th>Makelaar Name</th>
           <th>Makelaar Id</th>
           <th>Number of Properties</th>
         </tr>
-      </header>
-      <body>
-        <tr *ngFor="let row of table.Rows">
-          <td>{{row.MakelaarNaam}}</td>
-          <td>{{row.MakelaarId}}</td>
-          <td>{{row.Total}}</td>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of table.rows">
+          <td>{{row.makelaarNaam}}</td>
+          <td>{{row.makelaarId}}</td>
+          <td>{{row.total}}</td>
         </tr>
-      </body>
+      </tbody>
     </table>
   </div>
 </div>

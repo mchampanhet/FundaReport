@@ -1,9 +1,9 @@
 import { MakelaarRowModel } from "./MakelaarRowModel";
 
 export interface MakelaarTableModel {
-    Query?: string;
-    NumberOfApiRequests?: number;
-    TotalTimePreparingTable?: number;
-    TotalTimeWaitingOnRateLimit?: number;
-    Rows?: MakelaarRowModel[];
+    query?: string;
+    numberOfApiRequests?: number;
+    totalTimePreparingTable?: number;
+    totalTimeWaitingOnRateLimit?: number;
+    rows?: MakelaarRowModel[];
 }

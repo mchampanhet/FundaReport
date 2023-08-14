@@ -1,5 +1,5 @@
 export interface MakelaarRowModel {
-    MakelaarNaam: string;
-    MakelaarId: number;
-    Total: number;
+    makelaarNaam: string;
+    makelaarId: number;
+    total: number;
 } 
