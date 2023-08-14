@@ -10,7 +10,7 @@ export class BackendService {
     constructor(private _httpClient: HttpClient) {}
 
   getReport(): Observable<MakelaarReportModel | null> {
-    return this._httpClient.get<MakelaarReportModel>('https://localhost:7102/Report')
+    return this._httpClient.get<MakelaarReportModel>('https://localhost:7102/Report/GetStandardMakelaarReport')
         .pipe(
             catchError(error => of(null))
         );
