@@ -50,13 +50,15 @@ namespace FundaReport.Services
             _stopwatch = new Stopwatch();
             _stopwatch.Start();
 
+            // TODO: find a more robust method for rate-limiting outgoing API calls
+            // in order to be able to multithread the requests to Funda API
             while (page == 1 || page * _pageSize < total)
             { 
                 var fundaResponse = await _fundaHttpService.GetQueryResultsAsync(query, page, _pageSize);
                 _apiRequestCounter++;
                 if (fundaResponse.IsFailed)
                 {
-                    // if Funda API call fails, give it a little time and try again
+                    // if Funda API call fails despite our internal rate-limiting, give it a little time and try again
                     Thread.Sleep(3000);
                     table.TotalTimeWaitingOnRateLimit += 3;
                     checkForRateLimiting(table);

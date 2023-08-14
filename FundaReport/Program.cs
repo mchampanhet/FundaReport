@@ -10,7 +10,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddTransient<ReportService>();
-builder.Services.AddHttpClient<FundaHttpService>();
+builder.Services.AddHttpClient<FundaHttpService>()
+                .ConfigureHttpClient(c => c.BaseAddress = new Uri(builder.Configuration.GetSection("AppSettings").Get<AppSettings>().FundaApiSettings.BaseUrl));
 
 var app = builder.Build();
 
